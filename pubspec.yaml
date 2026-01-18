@@ -1,0 +1,70 @@
+name: voice_todo
+description: 智能语音待办清单应用 - VoiceTodo
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  # Flutter核心
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # 状态管理
+  provider: ^6.0.5
+
+  # 本地存储
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.4.0
+  sqflite_common_ffi_web: ^1.1.1
+  path: ^1.8.3
+  path_provider: ^2.1.1
+
+  # 语音识别（离线方案）
+  speech_to_text: ^6.3.0
+
+  # 动画
+  flutter_animate: ^4.1.1+1
+
+  # 日期处理
+  intl: ^0.20.2
+
+  # 实用工具
+  uuid: ^4.2.1
+  shared_preferences: ^2.2.2
+
+  # 图标
+  cupertino_icons: ^1.0.2
+  webdev: ^3.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+  # 代码生成
+  build_runner: ^2.4.6
+
+flutter:
+  uses-material-design: true
+
+  # 资源配置
+  assets:
+    - assets/icons/
+    - assets/animations/
+
+  # 字体配置
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
