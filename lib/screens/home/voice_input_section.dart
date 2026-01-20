@@ -49,8 +49,10 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
           // 麦克风按钮（带实时识别文本和错误显示）
           MicrophoneButton(
             isListening: voiceProvider.isListening,
-            onPressed: () => _handleMicPressed(context, voiceProvider, todoProvider),
-            recognizedText: voiceProvider.isListening ? voiceProvider.recognizedText : null,
+            onPressed: () =>
+                _handleMicPressed(context, voiceProvider, todoProvider),
+            recognizedText:
+                voiceProvider.isListening ? voiceProvider.recognizedText : null,
             errorMessage: voiceProvider.error,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -59,7 +61,7 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
           _buildStatusIndicator(context, voiceProvider),
 
           // 识别结果预览（识别完成后显示）
-          if (voiceProvider.status == VoiceStatus.done && 
+          if (voiceProvider.status == VoiceStatus.done &&
               voiceProvider.recognizedText.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             _buildResultPreview(context, voiceProvider, todoProvider),
@@ -69,9 +71,10 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
     );
   }
 
-  Widget _buildStatusIndicator(BuildContext context, VoiceProvider voiceProvider) {
+  Widget _buildStatusIndicator(
+      BuildContext context, VoiceProvider voiceProvider) {
     final theme = Theme.of(context);
-    
+
     if (voiceProvider.status == VoiceStatus.listening) {
       return Container(
         padding: const EdgeInsets.symmetric(
@@ -104,7 +107,7 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
         ),
       );
     }
-    
+
     if (voiceProvider.status == VoiceStatus.processing) {
       return Container(
         padding: const EdgeInsets.symmetric(
@@ -137,7 +140,7 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
         ),
       );
     }
-    
+
     return const SizedBox.shrink();
   }
 
@@ -147,7 +150,7 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
     TodoProvider todoProvider,
   ) {
     final theme = Theme.of(context);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -174,7 +177,8 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => _handleConfirm(context, voiceProvider, todoProvider),
+                  onPressed: () =>
+                      _handleConfirm(context, voiceProvider, todoProvider),
                   icon: const Icon(Icons.check),
                   label: const Text('确认添加'),
                 ),
@@ -200,13 +204,13 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
     if (voiceProvider.isListening) {
       // 停止录音并处理结果
       final todos = await voiceProvider.stopListening();
-      
+
       // 如果解析成功，自动创建待办事项
       if (todos.isNotEmpty) {
         for (final todo in todos) {
           await todoProvider.addTodo(todo);
         }
-        
+
         // 显示成功提示
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -217,7 +221,7 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
             ),
           );
         }
-        
+
         // 重置状态
         voiceProvider.reset();
       }
@@ -232,27 +236,7 @@ class _VoiceInputSectionState extends State<VoiceInputSection> {
     VoiceProvider voiceProvider,
     TodoProvider todoProvider,
   ) async {
-    // 解析并创建待办事项
-    final todos = await voiceProvider.stopListening();
-    
-    if (todos.isNotEmpty) {
-      for (final todo in todos) {
-        await todoProvider.addTodo(todo);
-      }
-      
-      // 显示成功提示
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('成功创建 ${todos.length} 个待办事项'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-      
-      // 重置状态
-      voiceProvider.reset();
-    }
+    // 使用统一的解析添加方法，避免状态管理不一致
+    await voiceProvider.parseAndAddTodos();
   }
 }

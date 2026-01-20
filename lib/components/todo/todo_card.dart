@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 
 import '../../models/todo_item.dart';
 import '../../providers/todo_provider.dart';
@@ -36,7 +37,7 @@ class _TodoCardState extends State<TodoCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        transform: Matrix4.identity()..translate(0, _isPressed ? 2 : 0),
+        transform: Matrix4.identity()..translateByVector3(Vector3(0, _isPressed ? 2 : 0, 0)),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
@@ -67,9 +68,10 @@ class _TodoCardState extends State<TodoCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      widget.todo.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                    AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
                         decoration: widget.todo.isCompleted
                             ? TextDecoration.lineThrough
                             : null,
@@ -77,16 +79,21 @@ class _TodoCardState extends State<TodoCard> {
                             ? theme.colorScheme.onSurface.withOpacity(0.5)
                             : theme.colorScheme.onSurface,
                       ),
+                      child: Text(widget.todo.title),
                     ),
                     if (widget.todo.description.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        widget.todo.description,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 300),
+                        opacity: widget.todo.isCompleted ? 0.5 : 1.0,
+                        child: Text(
+                          widget.todo.description,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                     const SizedBox(height: AppSpacing.sm),
@@ -112,7 +119,8 @@ class _TodoCardState extends State<TodoCard> {
         }
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         width: 28,
         height: 28,
         decoration: BoxDecoration(
@@ -128,10 +136,23 @@ class _TodoCardState extends State<TodoCard> {
           borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
         ),
         child: widget.todo.isCompleted
-            ? Icon(
-                Icons.check,
-                size: 18,
-                color: AppColors.onPrimary,
+            ? TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.elasticOut,
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Transform.rotate(
+                      angle: value * 0.5,
+                      child: Icon(
+                        Icons.check,
+                        size: 18,
+                        color: AppColors.onPrimary,
+                      ),
+                    ),
+                  );
+                },
               )
             : null,
       ),
@@ -353,8 +374,33 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
   }
 
   void _deleteTodo(BuildContext context) {
-    final provider = context.read<TodoProvider>();
-    provider.deleteTodo(widget.todo.id);
-    Navigator.pop(context);
+    // 显示确认对话框
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除这个待办事项吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.pop(context);
+              // 延迟执行删除，让底部弹窗先关闭
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (context.mounted) {
+                  final provider = context.read<TodoProvider>();
+                  provider.deleteTodo(widget.todo.id);
+                }
+              });
+            },
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
   }
 }

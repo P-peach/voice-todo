@@ -10,17 +10,19 @@ import 'package:permission_handler/permission_handler.dart';
 /// - Android: SpeechRecognizer
 /// - Web: Web Speech API (浏览器自动处理权限)
 class VoiceRecognitionService {
-  static final VoiceRecognitionService instance = VoiceRecognitionService._internal();
+  static final VoiceRecognitionService instance =
+      VoiceRecognitionService._internal();
 
   // speech_to_text 实例
   late stt.SpeechToText _speech;
-  
+
   bool _isInitialized = false;
   bool _isListening = false;
   bool _isAvailable = false;
   String _lastRecognizedText = '';
   String? _error;
   Timer? _timeoutTimer;
+  bool _hasFinalResult = false;
 
   // 语音识别状态流
   final _resultController = StreamController<String>.broadcast();
@@ -46,23 +48,23 @@ class VoiceRecognitionService {
     if (kIsWeb) {
       return PermissionStatus.granted;
     }
-    
+
     final micStatus = await Permission.microphone.status;
     final speechStatus = await Permission.speech.status;
-    
+
     // 如果任一权限被拒绝，返回拒绝状态
     if (micStatus.isDenied || speechStatus.isDenied) {
       return PermissionStatus.denied;
     }
-    
+
     if (micStatus.isPermanentlyDenied || speechStatus.isPermanentlyDenied) {
       return PermissionStatus.permanentlyDenied;
     }
-    
+
     if (micStatus.isGranted && speechStatus.isGranted) {
       return PermissionStatus.granted;
     }
-    
+
     return PermissionStatus.notDetermined;
   }
 
@@ -72,18 +74,18 @@ class VoiceRecognitionService {
     if (kIsWeb) {
       return true;
     }
-    
+
     try {
       final micStatus = await Permission.microphone.request();
       final speechStatus = await Permission.speech.request();
-      
+
       final granted = micStatus.isGranted && speechStatus.isGranted;
-      
+
       if (!granted) {
         _error = '需要麦克风和语音识别权限才能使用语音输入功能';
         _errorController.add(_error!);
       }
-      
+
       return granted;
     } catch (e) {
       _error = '请求权限时发生错误: ${e.toString()}';
@@ -99,14 +101,14 @@ class VoiceRecognitionService {
     try {
       // 检查权限
       final permissionStatus = await checkPermissions();
-      
+
       if (permissionStatus == PermissionStatus.permanentlyDenied) {
         _error = '语音识别权限已被永久拒绝，请在设置中开启';
         _errorController.add(_error!);
         _statusController.add(VoiceStatus.error);
         return;
       }
-      
+
       if (permissionStatus != PermissionStatus.granted) {
         final granted = await requestPermissions();
         if (!granted) {
@@ -180,21 +182,28 @@ class VoiceRecognitionService {
       });
 
       // 开始语音识别
+      _hasFinalResult = false;
       await _speech.listen(
         onResult: (result) {
+          // 如果已经收到 finalResult，不再处理后续结果
+          if (_hasFinalResult) return;
+
           _lastRecognizedText = result.recognizedWords;
-          _resultController.add(_lastRecognizedText);
-          onResult?.call(_lastRecognizedText);
-          
-          // 如果识别完成（finalResult），自动停止
+
+          // 只有 finalResult 才发送到 Stream
           if (result.finalResult) {
+            _hasFinalResult = true;
+            _resultController.add(_lastRecognizedText);
+            onResult?.call(_lastRecognizedText);
             stopListening();
+          } else {
+            // partialResults 不发送到 Stream，避免状态不一致
           }
         },
         localeId: locale,
         listenMode: stt.ListenMode.confirmation,
         cancelOnError: true,
-        partialResults: true, // 启用实时识别结果
+        partialResults: true,
       );
     } catch (e) {
       _error = '开始语音识别失败: ${e.toString()}';

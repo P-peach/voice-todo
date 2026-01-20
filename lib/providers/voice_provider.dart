@@ -10,7 +10,8 @@ import 'todo_provider.dart';
 
 /// 语音识别状态管理 Provider
 class VoiceProvider extends ChangeNotifier {
-  final VoiceRecognitionService _voiceService = VoiceRecognitionService.instance;
+  final VoiceRecognitionService _voiceService =
+      VoiceRecognitionService.instance;
   final TodoParserService _parserService = TodoParserService.instance;
 
   VoiceStatus _status = VoiceStatus.uninitialized;
@@ -20,6 +21,7 @@ class VoiceProvider extends ChangeNotifier {
   StreamSubscription<VoiceStatus>? _statusSubscription;
   StreamSubscription<String>? _errorSubscription;
   BuildContext? _context;
+  bool _isProcessing = false;
 
   VoiceStatus get status => _status;
   String get recognizedText => _recognizedText;
@@ -41,13 +43,13 @@ class VoiceProvider extends ChangeNotifier {
     try {
       // 检查权限状态
       final permissionStatus = await _voiceService.checkPermissions();
-      
+
       // 如果权限被永久拒绝，显示对话框
       if (permissionStatus == PermissionStatus.permanentlyDenied) {
         _status = VoiceStatus.error;
         _error = '语音识别权限已被永久拒绝';
         notifyListeners();
-        
+
         // 延迟显示对话框，等待 UI 构建完成
         if (_context != null && _context!.mounted) {
           Future.delayed(const Duration(milliseconds: 500), () {
@@ -69,11 +71,11 @@ class VoiceProvider extends ChangeNotifier {
       _statusSubscription = _voiceService.statusStream.listen((status) {
         _status = status;
         notifyListeners();
-        
+
         // 如果初始化后发现设备不支持，显示对话框
-        if (status == VoiceStatus.error && 
+        if (status == VoiceStatus.error &&
             _error?.contains('不支持') == true &&
-            _context != null && 
+            _context != null &&
             _context!.mounted) {
           DeviceUnsupportedDialog.show(_context!);
         }
@@ -81,6 +83,8 @@ class VoiceProvider extends ChangeNotifier {
 
       // 订阅实时识别结果流
       _resultSubscription = _voiceService.resultStream.listen((text) {
+        // 如果正在处理，不接收新的结果
+        if (_isProcessing) return;
         _recognizedText = text;
         notifyListeners();
       });
@@ -115,12 +119,12 @@ class VoiceProvider extends ChangeNotifier {
 
     // 检查当前权限状态
     final permissionStatus = await _voiceService.checkPermissions();
-    
+
     // 如果已授权，直接返回
     if (permissionStatus == PermissionStatus.granted) {
       return true;
     }
-    
+
     // 如果永久拒绝，显示前往设置对话框
     if (permissionStatus == PermissionStatus.permanentlyDenied) {
       final result = await PermissionDialog.showPermanentlyDenied(
@@ -129,13 +133,14 @@ class VoiceProvider extends ChangeNotifier {
       );
       return result ?? false;
     }
-    
+
     // 显示权限说明对话框
-    final showDialog = await PermissionDialog.showMicrophonePermission(_context!);
+    final showDialog =
+        await PermissionDialog.showMicrophonePermission(_context!);
     if (showDialog != true) {
       return false;
     }
-    
+
     // 请求权限
     return await _voiceService.requestPermissions();
   }
@@ -147,7 +152,7 @@ class VoiceProvider extends ChangeNotifier {
       _error = '设备不支持语音识别';
       _status = VoiceStatus.error;
       notifyListeners();
-      
+
       if (_context != null && _context!.mounted) {
         await DeviceUnsupportedDialog.show(_context!);
       }
@@ -164,7 +169,7 @@ class VoiceProvider extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      
+
       // 权限获取后重新初始化
       await _voiceService.initialize();
     }
@@ -276,36 +281,53 @@ class VoiceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 解析并添加待办事项（供 UI 手动调用）
+  /// 解析并添加待办事项（供 UI 手动调用）- 带完整防重复保护
   Future<void> parseAndAddTodos() async {
-    await _parseAndAddTodos();
-  }
-
-  /// 解析并添加待办事项（内部方法）
-  Future<void> _parseAndAddTodos() async {
     if (_recognizedText.trim().isEmpty) {
       return;
     }
 
+    // 防止重复调用 - 只允许在 ready 或 done 状态时执行
+    if (_status == VoiceStatus.processing ||
+        _status == VoiceStatus.listening ||
+        _isProcessing) {
+      return;
+    }
+
+    // 保存当前识别文本用于比较，防止重复添加相同内容
+    final currentText = _recognizedText;
+
+    // 设置处理状态，阻止新的 Stream 结果更新 _recognizedText
+    _isProcessing = true;
+
     try {
+      _status = VoiceStatus.processing;
+      notifyListeners();
+
       // 解析待办事项
-      final todos = _parserService.parse(_recognizedText);
+      final todos = _parserService.parse(currentText);
 
       // 如果解析失败
       if (todos.isEmpty) {
         _error = '无法从语音中提取待办事项';
         _status = VoiceStatus.error;
+        _isProcessing = false;
         notifyListeners();
         return;
       }
 
       // 批量添加待办事项到 TodoProvider
       if (_context != null && _context!.mounted) {
-        final todoProvider = Provider.of<TodoProvider>(_context!, listen: false);
+        final todoProvider =
+            Provider.of<TodoProvider>(_context!, listen: false);
         try {
           // 使用批量添加方法，避免多次调用 loadTodos
           await todoProvider.addTodos(todos);
         } catch (e) {
+          _status = VoiceStatus.error;
+          _error = '添加待办事项失败: ${e.toString()}';
+          _isProcessing = false;
+          notifyListeners();
           rethrow;
         }
 
@@ -323,10 +345,12 @@ class VoiceProvider extends ChangeNotifier {
       // 清空识别文本，准备下次录音
       _recognizedText = '';
       _status = VoiceStatus.ready;
+      _isProcessing = false;
       notifyListeners();
     } catch (e) {
       _error = '添加待办事项失败: ${e.toString()}';
       _status = VoiceStatus.error;
+      _isProcessing = false;
       notifyListeners();
     }
   }
