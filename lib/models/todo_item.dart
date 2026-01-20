@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'reminder_config.dart';
 
 /// 待办事项数据模型
 class TodoItem {
@@ -12,6 +13,7 @@ class TodoItem {
   final DateTime createdAt;
   final DateTime? completedAt;
   final bool isVoiceCreated; // 是否通过语音创建
+  final ReminderConfig? reminderConfig; // 提醒配置
 
   TodoItem({
     required this.id,
@@ -24,6 +26,7 @@ class TodoItem {
     required this.createdAt,
     this.completedAt,
     this.isVoiceCreated = false,
+    this.reminderConfig,
   });
 
   // 从数据库 Map 创建
@@ -43,6 +46,9 @@ class TodoItem {
           ? DateTime.parse(map['completed_at'] as String)
           : null,
       isVoiceCreated: (map['is_voice_created'] as int?) == 1,
+      reminderConfig: map['reminder_config'] != null
+          ? ReminderConfig.fromJson(map['reminder_config'] as String)
+          : null,
     );
   }
 
@@ -59,6 +65,7 @@ class TodoItem {
       'created_at': createdAt.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
       'is_voice_created': isVoiceCreated ? 1 : 0,
+      'reminder_config': reminderConfig?.toJson(),
     };
   }
 
@@ -84,6 +91,7 @@ class TodoItem {
     DateTime? createdAt,
     DateTime? completedAt,
     bool? isVoiceCreated,
+    ReminderConfig? reminderConfig,
   }) {
     return TodoItem(
       id: id ?? this.id,
@@ -96,6 +104,7 @@ class TodoItem {
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
       isVoiceCreated: isVoiceCreated ?? this.isVoiceCreated,
+      reminderConfig: reminderConfig ?? this.reminderConfig,
     );
   }
 

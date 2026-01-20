@@ -142,6 +142,33 @@ class _TodoCardState extends State<TodoCard> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // 语音创建标记
+        if (widget.todo.isVoiceCreated) ...[
+          Icon(
+            Icons.mic,
+            size: 14,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+        
+        // 提醒图标
+        if (widget.todo.reminderConfig != null) ...[
+          Icon(
+            Icons.notifications_active,
+            size: 14,
+            color: theme.colorScheme.tertiary,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            '${widget.todo.reminderConfig!.count}次',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.tertiary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+        
         // 分类标签
         Container(
           padding: const EdgeInsets.symmetric(

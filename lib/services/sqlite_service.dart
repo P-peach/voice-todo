@@ -20,7 +20,7 @@ class SqliteService {
 
   // 数据库名称和版本
   static const String _databaseName = 'voice_todo.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   // Web 平台的 SharedPreferences 存储
   static const String _webTodosKey = 'voice_todo_todos';
@@ -106,7 +106,8 @@ class SqliteService {
         deadline TEXT,
         created_at TEXT NOT NULL,
         completed_at TEXT,
-        is_voice_created INTEGER DEFAULT 0
+        is_voice_created INTEGER DEFAULT 0,
+        reminder_config TEXT
       )
     ''');
 
@@ -126,7 +127,12 @@ class SqliteService {
 
   /// 数据库升级
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // 未来版本升级逻辑
+    // 从版本 1 升级到版本 2：添加 reminder_config 字段
+    if (oldVersion < 2) {
+      await db.execute('''
+        ALTER TABLE todos ADD COLUMN reminder_config TEXT
+      ''');
+    }
   }
 
   // ==================== 待办事项 CRUD 操作 ====================

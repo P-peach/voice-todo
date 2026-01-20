@@ -1,4 +1,7 @@
 import '../models/todo_item.dart';
+import 'parsers/date_time_parser.dart';
+import 'parsers/category_classifier.dart';
+import 'parsers/list_mode_detector.dart';
 
 /// 待办事项智能解析服务
 ///
@@ -6,46 +9,12 @@ import '../models/todo_item.dart';
 class TodoParserService {
   static final TodoParserService instance = TodoParserService._internal();
 
-  // 关键词映射
-  static const Map<String, String> categoryKeywords = {
-    '购物': '购物',
-    '买': '购物',
-    '超市': '购物',
-    '商店': '购物',
-    '商店街': '购物',
-    '工作': '工作',
-    '开会': '工作',
-    '报告': '工作',
-    '项目': '工作',
-    '任务': '工作',
-    '生活': '生活',
-    '打扫': '生活',
-    '做饭': '生活',
-    '家务': '生活',
-    '洗衣': '生活',
-    '学习': '学习',
-    '看书': '学习',
-    '阅读': '学习',
-    '课程': '学习',
-    '练习': '学习',
-    '健康': '健康',
-    '运动': '健康',
-    '锻炼': '健康',
-    '健身': '健康',
-    '跑步': '健康',
-  };
-
-  static const Map<String, String> priorityKeywords = {
-    '紧急': '高',
-    '重要': '高',
-    '马上': '高',
-    '立即': '高',
-    '尽快': '高',
-    '不急': '低',
-    '慢慢': '低',
-    '以后': '低',
-    '有空': '低',
-  };
+  final DateTimeParser _dateTimeParser = DateTimeParser();
+  final CategoryClassifier _categoryClassifier = CategoryClassifier();
+  final ListModeDetector _listModeDetector = ListModeDetector();
+  
+  // ID 生成计数器，确保在同一毫秒内生成的 ID 也是唯一的
+  int _idCounter = 0;
 
   TodoParserService._internal();
 
@@ -53,17 +22,15 @@ class TodoParserService {
   List<TodoItem> parse(String text) {
     if (text.trim().isEmpty) return [];
 
-    final todos = <TodoItem>[];
-
-    // 尝试多种分隔符
-    final separators = ['，', ',', '；', ';', '。', '.', '\n'];
-    var segments = [text];
-
-    for (final sep in separators) {
-      segments = segments.expand((seg) => seg.split(sep)).toList();
+    // 检测是否为列表模式
+    if (_listModeDetector.isListMode(text)) {
+      return _parseListMode(text);
     }
 
-    // 过滤空片段并解析
+    // 检测是否包含多个待办事项（用分隔符分割）
+    final todos = <TodoItem>[];
+    final segments = _splitMultipleTodos(text);
+
     for (final segment in segments) {
       final trimmed = segment.trim();
       if (trimmed.isNotEmpty) {
@@ -77,62 +44,104 @@ class TodoParserService {
     return todos;
   }
 
+  /// 分割多个待办事项
+  List<String> _splitMultipleTodos(String text) {
+    // 尝试多种分隔符
+    final separators = ['，', ',', '；', ';', '。', '.', '\n'];
+    var segments = [text];
+
+    for (final sep in separators) {
+      segments = segments.expand((seg) => seg.split(sep)).toList();
+    }
+
+    return segments;
+  }
+
+  /// 解析列表模式的待办事项
+  List<TodoItem> _parseListMode(String text) {
+    final items = _listModeDetector.splitItems(text);
+    final sharedAttrs = _listModeDetector.extractSharedAttributes(text);
+
+    final todos = <TodoItem>[];
+    for (final item in items) {
+      // 直接使用分割后的项作为标题（已包含数量信息）
+      final title = item.trim();
+      if (title.isEmpty) continue;
+
+      // 使用共享属性或从文本中提取
+      final category = sharedAttrs['category'] as String? ?? 
+                      _categoryClassifier.classify(text);
+      final priority = sharedAttrs['priority'] as String? ?? 
+                      _categoryClassifier.classifyPriority(text);
+      final deadline = sharedAttrs['deadline'] as DateTime? ?? 
+                      _dateTimeParser.parse(text);
+
+      todos.add(TodoItem(
+        id: _generateId(),
+        title: title,
+        description: '',
+        category: category,
+        priority: priority,
+        deadline: deadline,
+        createdAt: DateTime.now(),
+        isVoiceCreated: true,
+      ));
+    }
+
+    return todos;
+  }
+
   /// 解析单个待办事项
   TodoItem? _parseSingleTodo(String text) {
     if (text.isEmpty) return null;
 
-    // 提取标题（第一个标点符号之前的部分，或整段）
-    String title;
-    String description = '';
+    final title = _extractTitle(text);
+    if (title.isEmpty) return null;
 
-    final firstPunctuation = text.indexOf(RegExp('[，。；,.;]'));
-    if (firstPunctuation > 0) {
-      title = text.substring(0, firstPunctuation).trim();
-      description = text.substring(firstPunctuation + 1).trim();
-    } else {
-      title = text.trim();
-    }
-
-    // 如果标题太短，可能是误分割，合并到描述中
-    if (title.length < 2 && description.isNotEmpty) {
-      title = '$title $description'.trim();
-      description = '';
-    }
+    // 使用集成的解析器提取信息
+    final category = _categoryClassifier.classify(text);
+    final priority = _categoryClassifier.classifyPriority(text);
+    final deadline = _dateTimeParser.parse(text);
+    final needsReminder = _needsReminder(text);
 
     return TodoItem(
       id: _generateId(),
       title: title,
-      description: description,
-      category: _extractCategory(text),
-      priority: _extractPriority(text),
+      description: '',
+      category: category,
+      priority: priority,
+      deadline: deadline,
       createdAt: DateTime.now(),
       isVoiceCreated: true,
     );
   }
 
-  /// 提取分类
-  String _extractCategory(String text) {
-    for (final entry in categoryKeywords.entries) {
-      if (text.contains(entry.key)) {
-        return entry.value;
-      }
+  /// 提取标题
+  String _extractTitle(String text) {
+    // 移除时间表达式、分类关键词、优先级关键词
+    String title = text.trim();
+
+    // 简单处理：取第一个标点符号之前的部分，或整段
+    final firstPunctuation = title.indexOf(RegExp('[，。；,.;]'));
+    if (firstPunctuation > 0) {
+      title = title.substring(0, firstPunctuation).trim();
     }
-    return '其他';
+
+    return title;
   }
 
-  /// 提取优先级
-  String _extractPriority(String text) {
-    for (final entry in priorityKeywords.entries) {
-      if (text.contains(entry.key)) {
-        return entry.value;
-      }
-    }
-    return '中';
+  /// 检测是否需要提醒
+  bool _needsReminder(String text) {
+    final reminderKeywords = ['提醒我', '提醒', '记得', '别忘了', '别忘记'];
+    return reminderKeywords.any((keyword) => text.contains(keyword));
   }
 
   /// 生成唯一ID
   String _generateId() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
+    // 使用时间戳 + 计数器确保唯一性
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    _idCounter++;
+    return '${timestamp}_$_idCounter';
   }
 
   /// 智能补充文本（基于上下文）

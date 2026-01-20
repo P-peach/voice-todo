@@ -8,12 +8,16 @@ class MicrophoneButton extends StatefulWidget {
   final bool isListening;
   final VoidCallback onPressed;
   final double size;
+  final String? recognizedText;
+  final String? errorMessage;
 
   const MicrophoneButton({
     super.key,
     required this.isListening,
     required this.onPressed,
     this.size = 72,
+    this.recognizedText,
+    this.errorMessage,
   });
 
   @override
@@ -63,73 +67,150 @@ class _MicrophoneButtonState extends State<MicrophoneButton>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GestureDetector(
-      onTap: widget.onPressed,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              // 脉冲波纹效果
-              if (widget.isListening)
-                Container(
-                  width: widget.size * _pulseAnimation.value * 1.4,
-                  height: widget.size * _pulseAnimation.value * 1.4,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withOpacity(0.1),
-                  ),
-                ),
-              if (widget.isListening)
-                Container(
-                  width: widget.size * _scaleAnimation.value * 1.2,
-                  height: widget.size * _scaleAnimation.value * 1.2,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withOpacity(0.2),
-                  ),
-                ),
-              // 主按钮
-              Transform.scale(
-                scale: widget.isListening ? _scaleAnimation.value : 1.0,
-                child: Container(
-                  width: widget.size,
-                  height: widget.size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: widget.isListening
-                          ? [
-                              AppColors.primary,
-                              AppColors.tertiary,
-                            ]
-                          : [
-                              theme.colorScheme.primary,
-                              theme.colorScheme.primaryContainer,
-                            ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withOpacity(0.4),
-                        blurRadius: widget.isListening ? 20 : 12,
-                        spreadRadius: widget.isListening ? 5 : 2,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 麦克风按钮
+        GestureDetector(
+          onTap: widget.onPressed,
+          child: AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 脉冲波纹效果
+                  if (widget.isListening)
+                    Container(
+                      width: widget.size * _pulseAnimation.value * 1.4,
+                      height: widget.size * _pulseAnimation.value * 1.4,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary.withOpacity(0.1),
                       ),
-                    ],
+                    ),
+                  if (widget.isListening)
+                    Container(
+                      width: widget.size * _scaleAnimation.value * 1.2,
+                      height: widget.size * _scaleAnimation.value * 1.2,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary.withOpacity(0.2),
+                      ),
+                    ),
+                  // 主按钮
+                  Transform.scale(
+                    scale: widget.isListening ? _scaleAnimation.value : 1.0,
+                    child: Container(
+                      width: widget.size,
+                      height: widget.size,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: widget.isListening
+                              ? [
+                                  AppColors.primary,
+                                  AppColors.tertiary,
+                                ]
+                              : [
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.primaryContainer,
+                                ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.4),
+                            blurRadius: widget.isListening ? 20 : 12,
+                            spreadRadius: widget.isListening ? 5 : 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        widget.isListening ? Icons.stop : Icons.mic,
+                        size: widget.size * 0.5,
+                        color: AppColors.onPrimary,
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    widget.isListening ? Icons.stop : Icons.mic,
-                    size: widget.size * 0.5,
-                    color: AppColors.onPrimary,
+                ],
+              );
+            },
+          ),
+        ),
+        
+        // 实时识别文本显示
+        if (widget.isListening && widget.recognizedText != null && widget.recognizedText!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 280),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              widget.recognizedText!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+        
+        // 错误提示显示
+        if (widget.errorMessage != null && widget.errorMessage!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 280),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.errorContainer.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+              border: Border.all(
+                color: theme.colorScheme.error.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 18,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Text(
+                    widget.errorMessage!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

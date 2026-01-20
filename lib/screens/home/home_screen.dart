@@ -31,6 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final voiceProvider = context.watch<VoiceProvider>();
     final todoProvider = context.watch<TodoProvider>();
 
+    // 设置 context 给 VoiceProvider（用于显示对话框和添加待办）
+    voiceProvider.setContext(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('VoiceTodo'),
@@ -202,10 +205,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: () => voiceProvider.clearRecognizedText(),
-                icon: const Icon(Icons.clear),
-                label: const Text('清除'),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => voiceProvider.reset(),
+                  icon: const Icon(Icons.clear),
+                  label: const Text('清除'),
+                ),
               ),
             ],
           ),
@@ -340,31 +345,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _addRecognizedTodos(BuildContext context) {
+  void _addRecognizedTodos(BuildContext context) async {
     final voiceProvider = context.read<VoiceProvider>();
-    final todoProvider = context.read<TodoProvider>();
 
     if (voiceProvider.recognizedText.isEmpty) return;
 
-    final parser = TodoParserService.instance;
-    final todos = parser.parse(voiceProvider.recognizedText);
-
-    if (todos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('未识别到有效的待办事项')),
-      );
-      return;
+    try {
+      // 调用 VoiceProvider 的方法来解析并添加待办
+      await voiceProvider.parseAndAddTodos();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('添加失败: $e')),
+        );
+      }
     }
-
-    for (final todo in todos) {
-      todoProvider.addTodo(todo);
-    }
-
-    voiceProvider.clearRecognizedText();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已添加 ${todos.length} 个待办事项')),
-    );
   }
 
   void _showAddTodoSheet(BuildContext context) {
