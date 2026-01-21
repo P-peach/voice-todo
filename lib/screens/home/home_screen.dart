@@ -46,30 +46,18 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'clear_completed') {
-                _clearCompletedTodos(context);
-              } else if (value == 'clear_all') {
-                _clearAllTodos(context);
+              if (value == 'complete_all') {
+                _completeAllTodos(context);
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'clear_completed',
+              PopupMenuItem(
+                value: 'complete_all',
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline),
-                    SizedBox(width: AppSpacing.sm),
-                    Text('清除已完成'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'clear_all',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline),
-                    SizedBox(width: AppSpacing.sm),
-                    Text('清除全部'),
+                    Icon(Icons.done_all, color: AppColors.success),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Text('全部完成'),
                   ],
                 ),
               ),
@@ -81,11 +69,13 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: _scrollController,
         slivers: [
           // 语音输入区域 - 仅显示识别结果
-          if (voiceProvider.recognizedText.isNotEmpty && !voiceProvider.isListening)
+          if (voiceProvider.recognizedText.isNotEmpty &&
+              !voiceProvider.isListening)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                child: _buildRecognizedResultCard(context, voiceProvider, todoProvider),
+                child: _buildRecognizedResultCard(
+                    context, voiceProvider, todoProvider),
               ),
             ),
 
@@ -103,10 +93,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // 待办事项列表
           SliverFillRemaining(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: const TodoListSection(showOnlyIncomplete: true),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: const TodoListSection(showOnlyIncomplete: true),
+            ),
           ),
         ],
       ),
@@ -370,45 +360,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _clearCompletedTodos(BuildContext context) {
+  void _completeAllTodos(BuildContext context) {
     final provider = context.read<TodoProvider>();
-    final completedIds = provider.completedTodos.map((t) => t.id).toList();
-    if (completedIds.isEmpty) {
+    final incompleteCount = provider.incompleteCount;
+
+    if (incompleteCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有已完成的待办事项')),
+        const SnackBar(content: Text('没有待完成的待办事项')),
       );
       return;
     }
-    provider.deleteTodos(completedIds);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已清除 ${completedIds.length} 个已完成的待办事项')),
-    );
-  }
 
-  void _clearAllTodos(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认清除'),
-        content: const Text('确定要清除所有待办事项吗？此操作不可恢复。'),
+        title: const Text('确认完成全部'),
+        content: Text('确定要将全部 $incompleteCount 个待办事项标记为完成吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
-          FilledButton(
-            onPressed: () {
+          FilledButton.icon(
+            onPressed: () async {
               final provider = context.read<TodoProvider>();
-              provider.clearAll();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('已清除所有待办事项')),
-              );
+              await provider.completeAllTodos();
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('已成功完成全部 $incompleteCount 个待办事项')),
+                );
+              }
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('确认清除'),
+            icon: const Icon(Icons.check),
+            label: const Text('确认完成'),
           ),
         ],
       ),
@@ -459,4 +444,3 @@ class _CompactStatItem extends StatelessWidget {
     );
   }
 }
-

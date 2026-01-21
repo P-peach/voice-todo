@@ -68,12 +68,12 @@ class TodoProvider extends ChangeNotifier {
       }
 
       await _sqliteService.insertTodo(todo);
-      
+
       // 如果有提醒配置，调度提醒
       if (todo.reminderConfig != null && todo.deadline != null) {
         await _scheduleReminders(todo);
       }
-      
+
       await loadTodos();
     } catch (e) {
       _error = e.toString();
@@ -98,14 +98,14 @@ class TodoProvider extends ChangeNotifier {
 
       // 按顺序保存待办事项
       await _sqliteService.insertTodos(todos);
-      
+
       // 为有提醒配置的待办事项调度提醒
       for (final todo in todos) {
         if (todo.reminderConfig != null && todo.deadline != null) {
           await _scheduleReminders(todo);
         }
       }
-      
+
       await loadTodos();
     } catch (e) {
       _error = e.toString();
@@ -116,7 +116,7 @@ class TodoProvider extends ChangeNotifier {
   }
 
   /// 设置提醒
-  /// 
+  ///
   /// [todoId] 待办事项 ID
   /// [count] 提醒次数
   /// [interval] 提醒间隔
@@ -142,7 +142,8 @@ class TodoProvider extends ChangeNotifier {
       );
 
       // 调度提醒并获取已调度的时间
-      final scheduledTimes = await _notificationService.scheduleMultipleReminders(
+      final scheduledTimes =
+          await _notificationService.scheduleMultipleReminders(
         todoId: todo.id.hashCode, // 使用 hashCode 作为数字 ID
         title: todo.title,
         deadline: todo.deadline!,
@@ -158,7 +159,7 @@ class TodoProvider extends ChangeNotifier {
       // 更新待办事项
       final updatedTodo = todo.copyWith(reminderConfig: updatedConfig);
       await _sqliteService.updateTodo(updatedTodo);
-      
+
       await loadTodos();
     } catch (e) {
       _error = e.toString();
@@ -168,7 +169,7 @@ class TodoProvider extends ChangeNotifier {
   }
 
   /// 取消提醒
-  /// 
+  ///
   /// [todoId] 待办事项 ID
   Future<void> cancelReminder(String todoId) async {
     try {
@@ -186,7 +187,7 @@ class TodoProvider extends ChangeNotifier {
       // 移除提醒配置
       final updatedTodo = todo.copyWith(reminderConfig: null);
       await _sqliteService.updateTodo(updatedTodo);
-      
+
       await loadTodos();
     } catch (e) {
       _error = e.toString();
@@ -198,9 +199,9 @@ class TodoProvider extends ChangeNotifier {
   /// 验证待办事项必填字段
   bool _validateTodo(TodoItem todo) {
     // 验证 id、title、createdAt 是否存在
-    return todo.id.isNotEmpty && 
-           todo.title.isNotEmpty && 
-           todo.createdAt != null;
+    return todo.id.isNotEmpty &&
+        todo.title.isNotEmpty &&
+        todo.createdAt != null;
   }
 
   /// 调度提醒（私有方法）
@@ -249,7 +250,7 @@ class TodoProvider extends ChangeNotifier {
           count: todo.reminderConfig!.count,
         );
       }
-      
+
       await _sqliteService.deleteTodo(id);
       await loadTodos();
     } catch (e) {
@@ -271,7 +272,7 @@ class TodoProvider extends ChangeNotifier {
           );
         }
       }
-      
+
       await _sqliteService.deleteTodos(ids);
       await loadTodos();
     } catch (e) {
@@ -304,6 +305,28 @@ class TodoProvider extends ChangeNotifier {
         await _sqliteService.updateTodo(updatedTodo);
         await loadTodos();
       }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// 全部完成 - 将所有待办事项标记为完成
+  Future<void> completeAllTodos() async {
+    try {
+      if (_incompleteTodos.isEmpty) {
+        return;
+      }
+
+      final incompleteIds = _incompleteTodos.map((t) => t.id).toList();
+      for (final id in incompleteIds) {
+        final todo = await _sqliteService.getTodoById(id);
+        if (todo != null) {
+          final updatedTodo = todo.markAsCompleted();
+          await _sqliteService.updateTodo(updatedTodo);
+        }
+      }
+      await loadTodos();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
