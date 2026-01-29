@@ -198,10 +198,8 @@ class TodoProvider extends ChangeNotifier {
 
   /// 验证待办事项必填字段
   bool _validateTodo(TodoItem todo) {
-    // 验证 id、title、createdAt 是否存在
-    return todo.id.isNotEmpty &&
-        todo.title.isNotEmpty &&
-        todo.createdAt != null;
+    // 验证 id 和 title 是否存在
+    return todo.id.isNotEmpty && todo.title.isNotEmpty;
   }
 
   /// 调度提醒（私有方法）
@@ -236,6 +234,63 @@ class TodoProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+    }
+  }
+
+  /// 更新待办事项（带验证）
+  Future<void> updateTodoWithValidation(TodoItem todo) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // 验证必填字段
+      if (todo.title.trim().isEmpty) {
+        throw ArgumentError('标题不能为空');
+      }
+
+      // 验证截止日期（如果设置了）
+      if (todo.deadline != null) {
+        final now = DateTime.now();
+        if (todo.deadline!.isBefore(now)) {
+          throw ArgumentError('截止日期不能早于当前时间');
+        }
+      }
+
+      // 保留原始的 createdAt 时间戳
+      final originalTodo = await _sqliteService.getTodoById(todo.id);
+      if (originalTodo == null) {
+        throw ArgumentError('待办事项不存在');
+      }
+
+      // 确保 createdAt 不变
+      final updatedTodo = todo.copyWith(
+        createdAt: originalTodo.createdAt,
+      );
+
+      // 更新数据库
+      await _sqliteService.updateTodo(updatedTodo);
+
+      // 处理提醒配置变化
+      if (updatedTodo.deadline != null && updatedTodo.reminderConfig != null) {
+        // 如果有提醒配置，重新调度提醒
+        await _scheduleReminders(updatedTodo);
+      } else if (originalTodo.reminderConfig != null && updatedTodo.reminderConfig == null) {
+        // 如果移除了提醒配置，取消提醒
+        await _notificationService.cancelAllRemindersForTodo(
+          updatedTodo.id.hashCode,
+          count: originalTodo.reminderConfig!.count,
+        );
+      }
+
+      await loadTodos();
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      rethrow; // 重新抛出错误以便 UI 处理
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +13,18 @@ import 'theme/app_theme.dart';
 void main() async {
   // 确保绑定初始化
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 捕获 Flutter Web 键盘相关错误
+  if (kIsWeb) {
+    FlutterError.onError = (FlutterErrorDetails details) {
+      // 忽略 Web 平台的 viewInsets 负值错误
+      if (details.exception.toString().contains('ViewInsets cannot be negative')) {
+        debugPrint('Ignored Web keyboard error: ${details.exception}');
+        return;
+      }
+      FlutterError.presentError(details);
+    };
+  }
 
   // 初始化数据库服务
   await SqliteService.initialize();

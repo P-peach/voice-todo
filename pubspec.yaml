@@ -43,6 +43,7 @@ dependencies:
   # 实用工具
   uuid: ^4.2.1
   shared_preferences: ^2.2.2
+  string_similarity: ^2.0.0
 
   # 图标
   cupertino_icons: ^1.0.2
@@ -52,6 +53,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+
+  # 测试工具
+  mockito: ^5.4.4
 
   # 代码生成
   build_runner: ^2.4.6

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/voice_recognition_service.dart';
 import '../services/todo_parser_service.dart';
+import '../services/custom_vocabulary_service.dart';
 import '../models/todo_item.dart';
 import '../components/voice/permission_dialog.dart';
 import '../components/voice/device_unsupported_dialog.dart';
+import '../components/voice/recognition_edit_dialog.dart';
 import 'todo_provider.dart';
 
 /// 语音识别状态管理 Provider
@@ -13,9 +15,12 @@ class VoiceProvider extends ChangeNotifier {
   final VoiceRecognitionService _voiceService =
       VoiceRecognitionService.instance;
   final TodoParserService _parserService = TodoParserService.instance;
+  final CustomVocabularyService _vocabularyService =
+      CustomVocabularyService.instance;
 
   VoiceStatus _status = VoiceStatus.uninitialized;
   String _recognizedText = '';
+  String _correctedText = '';
   String? _error;
   StreamSubscription<String>? _resultSubscription;
   StreamSubscription<VoiceStatus>? _statusSubscription;
@@ -25,6 +30,7 @@ class VoiceProvider extends ChangeNotifier {
 
   VoiceStatus get status => _status;
   String get recognizedText => _recognizedText;
+  String get correctedText => _correctedText;
   String? get error => _error;
   bool get isListening => _status == VoiceStatus.listening;
   bool get isAvailable => _voiceService.isAvailable;
@@ -208,7 +214,82 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// 停止语音识别并解析待办事项
+  /// 停止语音识别并显示编辑对话框
+  /// 
+  /// 用户可以编辑识别的文本，确认后才会解析并创建待办事项
+  /// 
+  /// 返回创建的待办事项列表
+  Future<List<TodoItem>> stopListeningWithEdit() async {
+    if (_status != VoiceStatus.listening) {
+      return [];
+    }
+
+    if (_context == null || !_context!.mounted) {
+      // 如果没有 context，直接调用原来的方法
+      return stopListening();
+    }
+
+    try {
+      // 停止语音识别
+      final finalText = await _voiceService.stopListening();
+
+      // 如果没有识别到内容
+      if (finalText.trim().isEmpty) {
+        _error = '未识别到有效内容，请重试';
+        _status = VoiceStatus.error;
+        notifyListeners();
+        return [];
+      }
+
+      // 应用自定义词汇纠正
+      _correctedText = _applyVocabularyCorrections(finalText);
+
+      // 显示编辑对话框
+      final editedText = await showRecognitionEditDialog(
+        context: _context!,
+        recognizedText: _correctedText,
+      );
+
+      // 如果用户取消了
+      if (editedText == null || editedText.trim().isEmpty) {
+        _status = VoiceStatus.ready;
+        _recognizedText = '';
+        _correctedText = '';
+        notifyListeners();
+        return [];
+      }
+
+      // 更新纠正后的文本
+      _correctedText = editedText;
+
+      // 解析待办事项
+      _status = VoiceStatus.processing;
+      notifyListeners();
+
+      final todos = _parserService.parse(_correctedText);
+
+      // 如果解析失败
+      if (todos.isEmpty) {
+        _error = '无法从语音中提取待办事项，请重试';
+        _status = VoiceStatus.error;
+        notifyListeners();
+        return [];
+      }
+
+      // 解析成功
+      _status = VoiceStatus.done;
+      notifyListeners();
+
+      return todos;
+    } catch (e) {
+      _error = '处理语音识别结果失败: ${e.toString()}';
+      _status = VoiceStatus.error;
+      notifyListeners();
+      return [];
+    }
+  }
+
+  /// 停止语音识别并解析待办事项（不显示编辑对话框）
   Future<List<TodoItem>> stopListening() async {
     if (_status != VoiceStatus.listening) {
       return [];
@@ -226,11 +307,14 @@ class VoiceProvider extends ChangeNotifier {
         return [];
       }
 
+      // 应用自定义词汇纠正
+      _correctedText = _applyVocabularyCorrections(finalText);
+
       // 解析待办事项
       _status = VoiceStatus.processing;
       notifyListeners();
 
-      final todos = _parserService.parse(finalText);
+      final todos = _parserService.parse(_correctedText);
 
       // 如果解析失败
       if (todos.isEmpty) {
@@ -272,6 +356,26 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
+  /// 应用自定义词汇纠正
+  /// 
+  /// 使用 CustomVocabularyService 的模糊匹配算法（阈值 0.8）
+  /// 将识别文本中的错误词汇替换为正确词汇
+  /// 
+  /// [text] 原始识别文本
+  /// 返回纠正后的文本
+  String _applyVocabularyCorrections(String text) {
+    if (!_vocabularyService.isInitialized) {
+      return text;
+    }
+
+    try {
+      return _vocabularyService.applyCorrections(text);
+    } catch (e) {
+      print('Error applying vocabulary corrections: $e');
+      return text;
+    }
+  }
+
   /// 清除错误信息
   void clearError() {
     _error = null;
@@ -304,8 +408,11 @@ class VoiceProvider extends ChangeNotifier {
       _status = VoiceStatus.processing;
       notifyListeners();
 
-      // 解析待办事项
-      final todos = _parserService.parse(currentText);
+      // 应用自定义词汇纠正
+      _correctedText = _applyVocabularyCorrections(currentText);
+
+      // 解析待办事项（使用纠正后的文本）
+      final todos = _parserService.parse(_correctedText);
 
       // 如果解析失败
       if (todos.isEmpty) {
@@ -344,6 +451,7 @@ class VoiceProvider extends ChangeNotifier {
 
       // 清空识别文本，准备下次录音
       _recognizedText = '';
+      _correctedText = '';
       _status = VoiceStatus.ready;
       _isProcessing = false;
       notifyListeners();
@@ -358,6 +466,7 @@ class VoiceProvider extends ChangeNotifier {
   /// 重置状态
   void reset() {
     _recognizedText = '';
+    _correctedText = '';
     _error = null;
     _status = VoiceStatus.ready;
     notifyListeners();
