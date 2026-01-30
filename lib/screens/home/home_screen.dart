@@ -146,12 +146,21 @@ class _HomeScreenState extends State<HomeScreen> {
     TodoProvider todoProvider,
   ) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
+        color: isDark
+            ? theme.colorScheme.surfaceVariant
+            : theme.colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        border: isDark
+            ? Border.all(
+                color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                width: 1,
+              )
+            : null,
         boxShadow: [
           BoxShadow(
             color: theme.shadowColor.withOpacity(0.08),
@@ -215,6 +224,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final completedCount = provider.completedCount;
     final totalCount = provider.totalCount;
     final completionRate = provider.completionRate;
+    
+    // 深色模式使用更柔和的渐变色
+    final isDark = theme.brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? [
+            theme.colorScheme.surfaceVariant,
+            theme.colorScheme.surface,
+          ]
+        : [
+            theme.colorScheme.primaryContainer,
+            theme.colorScheme.primaryContainer.withOpacity(0.7),
+          ];
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -222,12 +243,15 @@ class _HomeScreenState extends State<HomeScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primaryContainer,
-            theme.colorScheme.primaryContainer.withOpacity(0.7),
-          ],
+          colors: gradientColors,
         ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+        border: isDark
+            ? Border.all(
+                color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                width: 1,
+              )
+            : null,
         boxShadow: [
           BoxShadow(
             color: theme.shadowColor.withOpacity(0.08),
@@ -247,7 +271,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     '完成率',
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
+                      color: isDark
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onPrimaryContainer,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -288,7 +314,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     CircularProgressIndicator(
                       value: completionRate,
                       strokeWidth: 8,
-                      backgroundColor: theme.colorScheme.surface,
+                      backgroundColor: isDark
+                          ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
+                          : theme.colorScheme.surface,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         theme.colorScheme.primary,
                       ),

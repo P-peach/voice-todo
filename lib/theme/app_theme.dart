@@ -63,22 +63,22 @@ class AppTheme {
     );
   }
 
-  // ==================== 深色主题 ====================
+  // ==================== 深色主题 (温暖橘色系) ====================
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: AppColors.darkInversePrimary,
-      onPrimary: AppColors.onPrimary,
-      primaryContainer: AppColors.onPrimaryContainer,
-      onPrimaryContainer: AppColors.primaryContainer,
-      secondary: AppColors.darkInverseSurface,
-      onSecondary: AppColors.onSecondary,
-      secondaryContainer: AppColors.darkOnSurface,
-      onSecondaryContainer: AppColors.secondaryContainer,
-      tertiary: AppColors.tertiary,
-      onTertiary: AppColors.onTertiary,
-      tertiaryContainer: AppColors.tertiaryContainer,
-      onTertiaryContainer: AppColors.onTertiaryContainer,
+      primary: AppColors.darkPrimary, // 珊瑚橘
+      onPrimary: AppColors.darkOnPrimary,
+      primaryContainer: AppColors.darkPrimaryContainer, // 深橘棕
+      onPrimaryContainer: AppColors.darkOnPrimaryContainer,
+      secondary: AppColors.darkSecondary, // 琥珀金
+      onSecondary: AppColors.darkOnSecondary,
+      secondaryContainer: AppColors.darkSecondaryContainer, // 深棕
+      onSecondaryContainer: AppColors.darkOnSecondaryContainer,
+      tertiary: AppColors.darkTertiary, // 暖粉橘
+      onTertiary: AppColors.darkOnTertiary,
+      tertiaryContainer: AppColors.darkTertiaryContainer,
+      onTertiaryContainer: AppColors.darkOnTertiaryContainer,
       error: AppColors.error,
       onError: AppColors.onError,
       errorContainer: AppColors.errorContainer,
@@ -270,7 +270,7 @@ class AppTheme {
       elevation: AppSpacing.elevationMedium,
       type: BottomNavigationBarType.fixed,
       backgroundColor: colorScheme.surface,
-      selectedItemColor: colorScheme.onSurface,
+      selectedItemColor: colorScheme.primary,
       unselectedItemColor: colorScheme.onSurfaceVariant,
       selectedLabelStyle: AppTypography.labelSmall,
       unselectedLabelStyle: AppTypography.labelSmall,

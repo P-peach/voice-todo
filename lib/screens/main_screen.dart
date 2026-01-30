@@ -47,20 +47,32 @@ class _MainScreenState extends State<MainScreen> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: _bottomNavItems
-            .map((item) => NavigationDestination(
-                  icon: item.icon,
-                  selectedIcon: item.activeIcon,
-                  label: item.label!,
-                ))
-            .toList(),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          backgroundColor: theme.colorScheme.surface,
+          indicatorColor: theme.colorScheme.primaryContainer,
+          destinations: _bottomNavItems
+              .map((item) => NavigationDestination(
+                    icon: item.icon,
+                    selectedIcon: item.activeIcon,
+                    label: item.label!,
+                  ))
+              .toList(),
+        ),
       ),
     );
   }

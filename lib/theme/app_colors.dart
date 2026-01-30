@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 /// 应用颜色常量 - Material 3 配色方案
 class AppColors {
   // ==================== 主要色彩 ====================
+  // 浅色模式使用紫色，深色模式使用橘色（在 darkTheme 中单独定义）
   static const Color primary = Color(0xFF6750A4);
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color primaryContainer = Color(0xFFEADDFF);
@@ -52,20 +53,36 @@ class AppColors {
   static const Color lightInverseOnSurface = Color(0xFFF4EFF4);
   static const Color lightInversePrimary = Color(0xFFD0BCFF);
 
-  // ==================== 背景色 - 深色模式 ====================
-  static const Color darkBackground = Color(0xFF1C1B1F);
-  static const Color darkOnBackground = Color(0xFFE6E1E5);
-  static const Color darkSurface = Color(0xFF1C1B1F);
-  static const Color darkOnSurface = Color(0xFFE6E1E5);
-  static const Color darkSurfaceVariant = Color(0xFF49454F);
-  static const Color darkOnSurfaceVariant = Color(0xFFCAC4D0);
-  static const Color darkOutline = Color(0xFF938F99);
-  static const Color darkOutlineVariant = Color(0xFF49454F);
+  // ==================== 背景色 - 深色模式 (温暖中性色) ====================
+  static const Color darkBackground = Color(0xFF1A1614); // 深棕灰
+  static const Color darkOnBackground = Color(0xFFFFF8F0); // 暖白
+  static const Color darkSurface = Color(0xFF252220); // 深暖灰
+  static const Color darkOnSurface = Color(0xFFFFF8F0);
+  static const Color darkSurfaceVariant = Color(0xFF332E2B); // 暖灰变体
+  static const Color darkOnSurfaceVariant = Color(0xFFE8D5C4); // 暖米色
+  static const Color darkOutline = Color(0xFF9E8B7A); // 暖灰棕
+  static const Color darkOutlineVariant = Color(0xFF4A3F35);
   static const Color darkShadow = Color(0x33000000);
   static const Color darkScrim = Color(0x33000000);
-  static const Color darkInverseSurface = Color(0xFFE6E1E5);
-  static const Color darkInverseOnSurface = Color(0xFF313033);
-  static const Color darkInversePrimary = Color(0xFF6750A4);
+  static const Color darkInverseSurface = Color(0xFFFFF8F0);
+  static const Color darkInverseOnSurface = Color(0xFF252220);
+  static const Color darkInversePrimary = Color(0xFFFF8A65); // 珊瑚橘
+
+  // ==================== 深色模式专用橘色系 ====================
+  static const Color darkPrimary = Color(0xFFFF8A65); // 珊瑚橘
+  static const Color darkOnPrimary = Color(0xFF1A1A1A);
+  static const Color darkPrimaryContainer = Color(0xFF4A2C00); // 深橘棕
+  static const Color darkOnPrimaryContainer = Color(0xFFFFE0B2); // 浅桃橘
+  
+  static const Color darkSecondary = Color(0xFFFFB74D); // 琥珀金
+  static const Color darkOnSecondary = Color(0xFF1A1A1A);
+  static const Color darkSecondaryContainer = Color(0xFF3E2723); // 深棕
+  static const Color darkOnSecondaryContainer = Color(0xFFFFE082); // 浅金色
+  
+  static const Color darkTertiary = Color(0xFFFFAB91); // 暖粉橘
+  static const Color darkOnTertiary = Color(0xFF1A1A1A);
+  static const Color darkTertiaryContainer = Color(0xFF3E2723);
+  static const Color darkOnTertiaryContainer = Color(0xFFFFCCBC); // 浅粉橘
 
   // ==================== 分类标签颜色 ====================
   static const Map<String, Color> categoryColors = {
